@@ -1,0 +1,2 @@
+
+from src.tasks.aggregation import aggregate_products_batch
