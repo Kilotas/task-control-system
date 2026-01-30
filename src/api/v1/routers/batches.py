@@ -3,11 +3,14 @@ from typing import Annotated
 from fastapi import APIRouter, status, Depends
 
 from src.api.v1.schemas.batch import BatchCreateIn, BatchCreatedOut, BatchDetailOut, BatchUpdateIn, BatchListQuery, BatchAggregateOut
+from src.api.v1.schemas.reports import BatchReportIn
 from src.core.dependencies import BatchServiceDep
-from src.api.v1.mappers.batch_mapper import to_created_out
+from src.domain.mappers.batch_mapper import to_created_out
 
 from src.api.v1.schemas.task import AggregateAsyncIn, TaskStartedOut
 from src.tasks.aggregation import aggregate_products_batch
+from src.tasks.reports import generate_batch_report
+
 
 router = APIRouter(prefix="/batches", tags=["Batches"])
 
@@ -117,4 +120,28 @@ async def aggregate_batch_products_async(
         status=task.status,
         message="Aggregation task started",
     )
+
+
+@router.post(
+    "/{batch_id}/reports",
+    response_model=TaskStartedOut,
+    status_code=status.HTTP_202_ACCEPTED,
+)
+async def generate_batch_report_async(
+    batch_id: int,
+    payload: BatchReportIn,
+):
+    task = generate_batch_report.delay(
+        batch_id=batch_id,
+        format=payload.format,
+        user_email=payload.email,
+    )
+
+    return TaskStartedOut(
+        task_id=task.id,
+        status=task.status,
+        message="Report generation started",
+    )
+
+
 

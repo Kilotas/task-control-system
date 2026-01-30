@@ -1,23 +1,15 @@
 import os
 from celery import Celery
 
-# Просто читаем из переменных окружения
-# Если не установлены - будут использованы значения по умолчанию
-broker_url = os.getenv(
-    "CELERY_BROKER_URL",
-    "amqp://guest:guest@127.0.0.1:5672//"
-)
+broker_url = os.getenv("CELERY_BROKER_URL")
+result_backend = os.getenv("CELERY_RESULT_BACKEND")
 
-result_backend = os.getenv(
-    "CELERY_RESULT_BACKEND",
-    "redis://127.0.0.1:6379/1"
-)
+if not broker_url:
+    raise RuntimeError("CELERY_BROKER_URL is not set")
+if not result_backend:
+    raise RuntimeError("CELERY_RESULT_BACKEND is not set")
 
-celery_app = Celery(
-    "production_control",
-    broker=broker_url,
-    backend=result_backend,
-)
+celery_app = Celery("production_control", broker=broker_url, backend=result_backend)
 
 celery_app.autodiscover_tasks(["src.tasks"])
 

@@ -7,9 +7,14 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
     ports:
-      - "5433:5432"
+      - "5434:5432"        # Mac -> контейнер (из контейнеров НЕ использовать)
     volumes:
       - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d production_control"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
   redis:
     image: redis:7-alpine
@@ -18,31 +23,103 @@ services:
       - "6379:6379"
     volumes:
       - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
 
   rabbitmq:
     image: rabbitmq:3.12-management-alpine
     container_name: prod_control_rabbitmq
     ports:
-    - "0.0.0.0:5672:5672"
-    - "0.0.0.0:15672:15672"
+      - "5672:5672"
+      - "15672:15672"
+    healthcheck:
+      test: ["CMD-SHELL", "rabbitmq-diagnostics -q ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  api:
+    build: .
+    container_name: prod_control_api
+    command: uvicorn src.main:app --host 0.0.0.0 --port 8000 --reload
+    env_file:
+      - .env.docker
+    environment:
+      PYTHONPATH: /app
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    volumes:
+      - .:/app
+    working_dir: /app
+    ports:
+      - "8000:8000"
 
   celery-worker:
     build: .
     container_name: prod_control_celery
-    command: celery -A src.celery_app.celery_app worker --loglevel=info --concurrency=4
+    command: celery -A src.celery_app.celery_app worker --loglevel=info --concurrency=1
+    env_file:
+      - .env.docker
     environment:
-      CELERY_BROKER_URL: amqp://guest:guest@rabbitmq:5672//
-      CELERY_RESULT_BACKEND: redis://redis:6379/0
-      DATABASE_URL : postgresql+asyncpg://postgres:postgres@postgres:5433/production_control
       PYTHONPATH: /app
     depends_on:
-      - rabbitmq
-      - redis
-      - postgres
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
     volumes:
       - .:/app
     working_dir: /app
 
+
+  migrate:
+    build: .
+    command: alembic upgrade head
+    env_file:
+      - .env.docker
+    environment:
+      PYTHONPATH: /app
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - .:/app
+    working_dir: /app
+
+  minio:
+    image: minio/minio:latest
+    container_name: prod_control_minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minio
+      MINIO_ROOT_PASSWORD: minio123456
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:9000/minio/health/live" ]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+
 volumes:
   pgdata:
   redis_data:
+  minio_data:

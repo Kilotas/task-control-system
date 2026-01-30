@@ -11,7 +11,7 @@ from src.celery_app import celery_app
 from src.application.uow.sqlalchemy import SqlAlchemyUnitOfWork
 from src.core.database import async_session_maker
 from src.core.exceptions import NotFoundException
-
+from src.core.database import celery_session_maker
 
 def _chunked(seq: list[str], size: int) -> list[list[str]]:
     """Разбивает список на части заданного размера."""
@@ -81,8 +81,6 @@ async def _process_chunk(
 
 async def _run_aggregation(batch_id: int, unique_codes: List[str], task_self) -> Dict:
     """Основная логика массовой агрегации."""
-    uow = SqlAlchemyUnitOfWork(async_session_maker)
-
     total = len(unique_codes)
     aggregated_total = 0
     errors: List[Dict[str, str]] = []
@@ -90,7 +88,7 @@ async def _run_aggregation(batch_id: int, unique_codes: List[str], task_self) ->
     chunks = _chunked(unique_codes, 500)
     processed = 0
 
-    async with uow:
+    async with SqlAlchemyUnitOfWork(celery_session_maker) as uow:
         await _validate_batch_exists(uow, batch_id)
 
         for part in chunks:

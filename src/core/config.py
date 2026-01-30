@@ -19,7 +19,11 @@ class Settings(BaseSettings):
     docs_url: str = "/docs"
     redoc_url: str = "/redoc"
 
-    # --- CORS ---
+    minio_endpoint: str
+    minio_access_key: str
+    minio_secret_key: str
+    minio_secure: bool = False
+
     cors_origins: List[str] = ["*"]
 
     model_config = SettingsConfigDict(
