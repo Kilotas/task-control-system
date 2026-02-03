@@ -31,7 +31,16 @@ def generate_batch_report(
         return result.to_dict()
 
     try:
-        return asyncio.run(_run())
+        result = asyncio.run(_run())
+        if result.get("success"):
+            from src.domain.services.webhook_service import dispatch_webhook_event
+            dispatch_webhook_event("report_generated", {
+                "batch_id": batch_id,
+                "report_type": fmt,
+                "file_url": result.get("download_url", ""),
+                "expires_at": result.get("expires_at", ""),
+            })
+        return result
     except AppException as exc:
         logger.warning("report.task.app_error %s", exc)
         return {"success": False, "error": exc.message}

@@ -27,7 +27,7 @@ class MinIOService:
             secure=settings.minio_secure,
         )
 
-    # ПРИВАТНЫЕ синхронные методы (только для внутреннего использования)
+
     def _ensure_buckets(self) -> None:
         for bucket in BUCKETS:
             if not self.client.bucket_exists(bucket):
@@ -51,6 +51,15 @@ class MinIOService:
             expires=timedelta(seconds=expires_sec),
         )
 
+    def _download_bytes(self, bucket: str, object_name: str) -> bytes:
+        self._ensure_buckets()
+        resp = self.client.get_object(bucket_name=bucket, object_name=object_name)
+        try:
+            return resp.read()
+        finally:
+            resp.close()
+            resp.release_conn()
+
     async def ensure_buckets(self) -> None:
         await asyncio.to_thread(self._ensure_buckets)
 
@@ -59,6 +68,9 @@ class MinIOService:
 
     async def presigned_get_url(self, bucket: str, object_name: str, expires_sec: int) -> str:
         return await (asyncio.to_thread(self._presigned_get_url, bucket, object_name, expires_sec))
+
+    async def download_bytes(self, bucket: str, object_name: str) -> bytes:
+        return await asyncio.to_thread(self._download_bytes, bucket, object_name)
 
 
 @lru_cache(maxsize=1)

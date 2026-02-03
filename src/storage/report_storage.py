@@ -26,7 +26,7 @@ class ReportStorage:
         """
         logger.info("report.storage.upload started object=%s size=%s", object_name, len(data))
 
-        await self._minio.upload_bytes_async(
+        await self._minio.upload_bytes(
             bucket="reports",
             object_name=object_name,
             data=data,
@@ -34,7 +34,7 @@ class ReportStorage:
         )
 
         expires_sec = self._expires_days * 24 * 3600
-        url = await self._minio.presigned_get_url_async(
+        url = await self._minio.presigned_get_url(
             bucket="reports",
             object_name=object_name,
             expires_sec=expires_sec,

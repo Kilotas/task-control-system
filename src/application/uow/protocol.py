@@ -7,6 +7,7 @@ from src.data.repositories.protocols import (
     WorkCenterRepositoryProtocol,
     ProductRepositoryProtocol,
 )
+from src.data.repositories.webhook_repository import WebhookRepository
 
 
 @runtime_checkable
@@ -14,6 +15,7 @@ class UnitOfWorkProtocol(Protocol):
     batches: BatchRepositoryProtocol
     work_centers: WorkCenterRepositoryProtocol
     products: ProductRepositoryProtocol
+    webhooks: WebhookRepository
 
     async def flush(self) -> None: ...
     async def commit(self) -> None: ...

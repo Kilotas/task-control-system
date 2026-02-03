@@ -4,6 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.data.repositories.batch_repository import BatchRepository
 from src.data.repositories.work_center_repository import WorkCenterRepository
 from src.data.repositories.product_repository import ProductRepository
+from src.data.repositories.webhook_repository import WebhookRepository
 
 logger = logging.getLogger(__name__)
 
@@ -18,6 +19,7 @@ class SqlAlchemyUnitOfWork:
         self.batches = BatchRepository(self._session)
         self.work_centers = WorkCenterRepository(self._session)
         self.products = ProductRepository(self._session)
+        self.webhooks = WebhookRepository(self._session)
 
         logger.debug("UoW started, session=%s", id(self._session))
         return self

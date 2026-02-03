@@ -4,6 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from src.core.config import settings
+from src.domain.services.cache_service import init_cache
 from src.core.database import dispose_engine
 from src.core.exceptions import register_exception_handlers
 
@@ -11,9 +12,11 @@ from src.api.v1 import api_v1_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    cache = await init_cache()
     try:
         yield
     finally:
+        await cache.close()
         await dispose_engine()
 
 

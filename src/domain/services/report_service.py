@@ -56,7 +56,7 @@ class BatchReportService:
         logger.info("report.service.generate started batch_id=%s fmt=%s", batch_id, fmt)
 
         async with self._uow:
-            batch = await self._uow.batches.get_by_id_with_products(batch_id)
+            batch = await self._uow.batches.get_by_id_with_products_and_wc(batch_id)
             if batch is None:
                 raise NotFoundException("Batch", batch_id)
 

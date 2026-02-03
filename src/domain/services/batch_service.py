@@ -9,6 +9,7 @@ from sqlalchemy.exc import IntegrityError
 from src.api.v1.schemas.batch import BatchUpdateIn, BatchListQuery
 from src.application.uow.protocol import UnitOfWorkProtocol
 from src.core.exceptions import ConflictException, ValidationException, NotFoundException
+from src.domain.services.webhook_service import dispatch_webhook_event
 
 from datetime import datetime
 
@@ -32,6 +33,16 @@ class BatchService:
                 len(created),
                 [b.id for b in created],
             )
+
+            for batch, item in zip(created, items):
+                dispatch_webhook_event("batch_created", {
+                    "id": batch.id,
+                    "batch_number": batch.batch_number,
+                    "batch_date": str(batch.batch_date),
+                    "nomenclature": batch.nomenclature,
+                    "work_center": item.get("work_center_identifier", ""),
+                })
+
             return created
 
 
@@ -49,16 +60,41 @@ class BatchService:
             if batch is None:
                 raise NotFoundException("Batch", batch_id)
 
+            changes = {}
+
             if data.is_closed and not batch.is_closed:
                 batch.is_closed = True
                 batch.closed_at = datetime.now(timezone.utc)
-
+                changes["is_closed"] = True
             elif not data.is_closed and batch.is_closed:
                 batch.is_closed = False
                 batch.closed_at = None
+                changes["is_closed"] = False
 
             await uow.batches.update(batch)
             await uow.flush()
+
+            if batch.is_closed and changes.get("is_closed"):
+                total = await uow.products.count_by_batch(batch_id)
+                aggregated = await uow.products.count_aggregated_by_batch(batch_id)
+                rate = round(aggregated / total * 100, 2) if total else 0.0
+                dispatch_webhook_event("batch_closed", {
+                    "id": batch.id,
+                    "batch_number": batch.batch_number,
+                    "closed_at": batch.closed_at.isoformat() if batch.closed_at else None,
+                    "statistics": {
+                        "total_products": total,
+                        "aggregated": aggregated,
+                        "aggregation_rate": rate,
+                    },
+                })
+            elif changes:
+                dispatch_webhook_event("batch_updated", {
+                    "id": batch.id,
+                    "batch_number": batch.batch_number,
+                    "changes": changes,
+                })
+
             return batch
 
 

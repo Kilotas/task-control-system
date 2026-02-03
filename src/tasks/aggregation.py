@@ -151,6 +151,15 @@ def aggregate_products_batch(self, batch_id: int, unique_codes: list[str], user_
     }
     """
     try:
-        return asyncio.run(_run_aggregation(batch_id, unique_codes, self))
+        result = asyncio.run(_run_aggregation(batch_id, unique_codes, self))
+        if result.get("success") and result.get("aggregated", 0) > 0:
+            from src.domain.services.webhook_service import dispatch_webhook_event
+            dispatch_webhook_event("product_aggregated", {
+                "batch_id": batch_id,
+                "aggregated_count": result["aggregated"],
+                "total": result["total"],
+                "failed": result["failed"],
+            })
+        return result
     except Exception as exc:
         _handle_task_error(self, exc)

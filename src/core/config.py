@@ -14,7 +14,7 @@ class Settings(BaseSettings):
     database_url: PostgresDsn
     database_pool_size: int = 20
 
-    # --- API ---
+
     api_v1_prefix: str = "/api/v1"
     docs_url: str = "/docs"
     redoc_url: str = "/redoc"
@@ -25,6 +25,11 @@ class Settings(BaseSettings):
     minio_secure: bool = False
 
     cors_origins: List[str] = ["*"]
+
+
+    cache_backend: Literal["memory", "redis"] = "redis"
+    redis_url: str = "redis://localhost:6379/0"
+    cache_ttl: int = 300
 
     model_config = SettingsConfigDict(
         env_file=".env",

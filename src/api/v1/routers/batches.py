@@ -1,8 +1,9 @@
 from typing import Annotated
 
-from fastapi import APIRouter, status, Depends
+from fastapi import APIRouter, status, Depends, UploadFile, File
 
 from src.api.v1.schemas.batch import BatchCreateIn, BatchCreatedOut, BatchDetailOut, BatchUpdateIn, BatchListQuery, BatchAggregateOut
+from src.api.v1.schemas.export import BatchExportIn
 from src.api.v1.schemas.reports import BatchReportIn
 from src.core.dependencies import BatchServiceDep
 from src.domain.mappers.batch_mapper import to_created_out
@@ -10,6 +11,10 @@ from src.domain.mappers.batch_mapper import to_created_out
 from src.api.v1.schemas.task import AggregateAsyncIn, TaskStartedOut
 from src.tasks.aggregation import aggregate_products_batch
 from src.tasks.reports import generate_batch_report
+from src.storage.minio_service import get_minio_service
+from src.tasks.imports import import_batches_from_file
+from src.tasks.batch_tasks import export_batches_to_file
+
 
 
 router = APIRouter(prefix="/batches", tags=["Batches"])
@@ -143,5 +148,31 @@ async def generate_batch_report_async(
         message="Report generation started",
     )
 
+@router.post(
+    "/import",
+    response_model=TaskStartedOut,
+    status_code=status.HTTP_202_ACCEPTED,
+)
+async def import_batches(file: UploadFile = File(...)):
+    data = await file.read()
 
+    minio = get_minio_service()
+    object_name = file.filename or "batches.xlsx"
+    await minio.upload_bytes(bucket="imports", object_name=object_name, data=data,
+                             content_type=file.content_type or "application/octet-stream")
+
+
+    task = import_batches_from_file.delay(file_object_name=object_name, user_id=1) # аутентификацию не добавлял, пока так
+
+    return TaskStartedOut(task_id=task.id, status=task.status, message="File uploaded, import started")
+
+
+@router.post(
+    "/export",
+    response_model=TaskStartedOut,
+    status_code=status.HTTP_202_ACCEPTED,
+)
+async def export_batches(payload: BatchExportIn):
+    task = export_batches_to_file.delay(filters=payload.filters, format=payload.format)
+    return TaskStartedOut(task_id=task.id, status=task.status, message="Export started")
 
