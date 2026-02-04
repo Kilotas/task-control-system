@@ -10,6 +10,7 @@ from src.domain.mappers.batch_report_mapper import _to_report_dto
 from src.application.uow.protocol import UnitOfWorkProtocol
 from src.core.exceptions import NotFoundException
 from src.storage.report_storage import ReportStorage
+from src.domain.services.webhook_service import dispatch_webhook_event
 
 logger = logging.getLogger(__name__)
 
@@ -91,6 +92,13 @@ class BatchReportService:
         task.update_state(state="PROGRESS", meta={"progress": 100})
 
         logger.info("report.service.generate success batch_id=%s", batch_id)
+
+        dispatch_webhook_event("report_generated", {
+            "batch_id": batch_id,
+            "report_type": fmt,
+            "file_url": url,
+            "expires_at": expires_at,
+        })
 
         return ReportResult(
             success=True,

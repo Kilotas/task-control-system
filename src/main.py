@@ -7,15 +7,20 @@ from src.core.config import settings
 from src.domain.services.cache_service import init_cache
 from src.core.database import dispose_engine
 from src.core.exceptions import register_exception_handlers
+from src.core.rate_limiter import init_rate_limiter, close_rate_limiter
+from src.core.middleware import RateLimitMiddleware
 
 from src.api.v1 import api_v1_router
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     cache = await init_cache()
+    await init_rate_limiter()
     try:
         yield
     finally:
+        await close_rate_limiter()
         await cache.close()
         await dispose_engine()
 
@@ -37,6 +42,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.add_middleware(RateLimitMiddleware)
 
 register_exception_handlers(app)
 

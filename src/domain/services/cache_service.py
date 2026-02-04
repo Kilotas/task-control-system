@@ -23,6 +23,9 @@ class CacheBackend(ABC):
     async def delete(self, key: str) -> None: ...
 
     @abstractmethod
+    async def delete_pattern(self, pattern: str) -> int: ...
+
+    @abstractmethod
     async def clear(self) -> None: ...
 
     @abstractmethod
@@ -42,6 +45,13 @@ class InMemoryCache(CacheBackend):
 
     async def delete(self, key: str) -> None:
         self._store.pop(key, None)
+
+    async def delete_pattern(self, pattern: str) -> int:
+        import fnmatch
+        keys_to_delete = [k for k in self._store.keys() if fnmatch.fnmatch(k, pattern)]
+        for key in keys_to_delete:
+            self._store.pop(key, None)
+        return len(keys_to_delete)
 
     async def clear(self) -> None:
         self._store.clear()
@@ -77,6 +87,29 @@ class RedisCache(CacheBackend):
         except Exception:
             logger.exception("RedisCache.delete failed for key=%s", key)
 
+    async def delete_pattern(self, pattern: str) -> int:
+        try:
+            keys = []
+            async for key in self._redis.scan_iter(match=PREFIX + pattern):
+                keys.append(key)
+            if keys:
+                deleted = await self._redis.delete(*keys)
+                logger.debug("Cache invalidated by pattern: %s, count=%d", pattern, deleted)
+                return deleted
+            return 0
+        except Exception:
+            logger.exception("RedisCache.delete_pattern failed for pattern=%s", pattern)
+            return 0
+
+    async def clear(self) -> None:
+        """Очистить все ключи с нашим префиксом"""
+        try:
+            keys = await self._redis.keys(PREFIX + "*")
+            if keys:
+                await self._redis.delete(*keys)
+        except Exception:
+            logger.exception("RedisCache.clear failed")
+
     async def close(self) -> None:
         try:
             await self._redis.aclose()
@@ -103,6 +136,9 @@ class CacheService:
 
     async def delete(self, key: str) -> None:
         await self._backend.delete(key)
+
+    async def delete_pattern(self, pattern: str) -> int:
+        return await self._backend.delete_pattern(pattern)
 
     async def get_or_set(self, key: str, factory, ttl: int | None = None) -> Any:
         cached = await self.get(key)

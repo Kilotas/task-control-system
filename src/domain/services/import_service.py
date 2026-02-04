@@ -11,6 +11,7 @@ from src.core.exceptions import ValidationException
 from src.domain.dto.import_dto import ImportResult, ImportErrorItem
 from src.storage.minio_service import get_minio_service
 from src.utils.excel_parser import parse_batches_excel
+from src.domain.services.webhook_service import dispatch_webhook_event
 
 logger = logging.getLogger(__name__)
 
@@ -57,6 +58,14 @@ class BatchImportService:
             counters.skipped,
             len(errors),
         )
+
+        dispatch_webhook_event("import_completed", {
+            "total_rows": counters.total,
+            "created": counters.created,
+            "skipped": counters.skipped,
+            "errors": [{"row": e.row, "error": e.error} for e in errors[:50]],
+        })
+
         return result
 
 

@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.data.models.batch import Batch
 from src.data.models.product import Product
+from src.data.models.work_center import WorkCenter
 
 
 class BatchRepository:
@@ -172,5 +173,90 @@ class BatchRepository:
             "aggregated_products": aggregated_count or 0,
             "aggregation_rate": aggregation_rate,
         }
+
+    async def count_today_statistics(self) -> dict:
+        """Статистика за сегодня."""
+        from datetime import date
+        today = date.today()
+
+        batches_created = await self.session.scalar(
+            select(func.count(Batch.id)).where(Batch.batch_date == today)
+        )
+        batches_closed = await self.session.scalar(
+            select(func.count(Batch.id)).where(
+                Batch.batch_date == today,
+                Batch.is_closed.is_(True),
+            )
+        )
+
+
+        products_added = await self.session.scalar(
+            select(func.count(Product.id))
+            .join(Batch, Product.batch_id == Batch.id)
+            .where(Batch.batch_date == today)
+        )
+
+        products_aggregated = await self.session.scalar(
+            select(func.count(Product.id))
+            .join(Batch, Product.batch_id == Batch.id)
+            .where(
+                Batch.batch_date == today,
+                Product.is_aggregated.is_(True),
+            )
+        )
+
+        return {
+            "batches_created": batches_created or 0,
+            "batches_closed": batches_closed or 0,
+            "products_added": products_added or 0,
+            "products_aggregated": products_aggregated or 0,
+        }
+
+    async def count_by_shift(self) -> dict:
+        """Статистика по сменам."""
+        stmt = (
+            select(
+                Batch.shift,
+                func.count(Batch.id).label("batches"),
+            )
+            .group_by(Batch.shift)
+        )
+        result = await self.session.execute(stmt)
+        rows = result.all()
+
+        shift_stats = {}
+        for row in rows:
+            shift_name = f"Смена {row.shift}" if row.shift else "Не указано"
+            shift_stats[shift_name] = {
+                "batches": row.batches,
+            }
+
+        return shift_stats
+
+    async def get_top_work_centers(self, limit: int = 5) -> list[dict]:
+        """Топ рабочих центров по количеству партий."""
+        stmt = (
+            select(
+                WorkCenter.id,
+                WorkCenter.identifier,
+                WorkCenter.name,
+                func.count(Batch.id).label("batches_count"),
+            )
+            .join(Batch, Batch.work_center_id == WorkCenter.id)
+            .group_by(WorkCenter.id, WorkCenter.identifier, WorkCenter.name)
+            .order_by(func.count(Batch.id).desc())
+            .limit(limit)
+        )
+        result = await self.session.execute(stmt)
+        rows = result.all()
+
+        return [
+            {
+                "id": row.identifier,
+                "name": row.name,
+                "batches_count": row.batches_count,
+            }
+            for row in rows
+        ]
 
 

@@ -1,9 +1,77 @@
-﻿.env
-.venv/
+﻿
+# python cashe
+**/__pycache__
+
+# virtual enviroments
+**/.venv
+**/venv
+
+# env files
+.env
+
+# docker
+**/.devcontainer
+
+# editors settings
+**/.pycharm
+**/.idea
+
+# log files
+**.log
+**.log.**
+
+# pickles
+**.pckl
+
+# test files
+**.test.**
+
+# data files
+**.csv
+**.xls
+**.xlsx
+# **.json
+# **.html
+
+# sql files
+
+# jupyter
+**/.ipynb_checkpoints
+**/.ipynb
+**.ipynb
+
+# configs
+**.cfg
+
+# pictures
+**.png
+**.jpg
+
+!frontend/**
+
+# binaries
+**.bin
+**.npy
+**.state
+**.bin.state
+**.id2word
+**.bin.id2word
+**.pkl
+
+# temporary files
+/temp
+
+
+# Environments
+.env.local
+.env.prod
+.env
+.venv
+env/
 venv/
-__pycache__/
-*.py[cod]
-.idea/
-.vscode/
-.pytest_cache/
-.mypy_cache/
+ENV/
+env.bak/
+venv.bak/
+
+#Docker data
+.docker_data

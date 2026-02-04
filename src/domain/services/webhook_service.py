@@ -1,15 +1,10 @@
 from __future__ import annotations
 
-import hashlib
-import hmac
-import json
 import logging
-from datetime import datetime, timezone
 from typing import Any
 
 from src.application.uow.protocol import UnitOfWorkProtocol
 from src.core.exceptions import NotFoundException
-from src.data.models.webhook_delivery import WebhookDelivery
 
 logger = logging.getLogger(__name__)
 
@@ -62,10 +57,12 @@ class WebhookService:
 
 
 def dispatch_webhook_event(event_type: str, data: dict[str, Any]) -> None:
+    """
+    Отправка webhook события всем подписчикам.
+
+    Args:
+        event_type: Тип события (batch_created, batch_updated, etc.)
+        data: Данные события
+    """
     from src.tasks.webhooks import deliver_webhook_event
-    payload = {
-        "event": event_type,
-        "data": data,
-        "timestamp": datetime.now(timezone.utc).isoformat(),
-    }
-    deliver_webhook_event.delay(event_type=event_type, payload=payload)
+    deliver_webhook_event.delay(event_type=event_type, data=data)

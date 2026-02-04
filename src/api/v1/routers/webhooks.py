@@ -8,6 +8,11 @@ from src.api.v1.schemas.webhook import (
     WebhookDeliveryListOut,
 )
 from src.core.dependencies import WebhookServiceDep
+from src.domain.mappers.webhook_mapper import (
+    to_subscription_out,
+    to_subscription_list_out,
+    to_delivery_list_out,
+)
 
 router = APIRouter(prefix="/webhooks", tags=["Webhooks"])
 
@@ -24,7 +29,7 @@ async def create_webhook(
     data = payload.model_dump()
     data["url"] = str(data["url"])
     sub = await service.create_subscription(data)
-    return sub
+    return to_subscription_out(sub)
 
 
 @router.get(
@@ -34,7 +39,7 @@ async def create_webhook(
 )
 async def list_webhooks(service: WebhookServiceDep):
     items = await service.list_subscriptions()
-    return WebhookSubscriptionListOut(items=items, total=len(items))
+    return to_subscription_list_out(items)
 
 
 @router.patch(
@@ -51,7 +56,7 @@ async def update_webhook(
     if "url" in data and data["url"] is not None:
         data["url"] = str(data["url"])
     sub = await service.update_subscription(webhook_id, data)
-    return sub
+    return to_subscription_out(sub)
 
 
 @router.delete(
@@ -75,4 +80,4 @@ async def list_deliveries(
     service: WebhookServiceDep,
 ):
     items = await service.list_deliveries(webhook_id)
-    return WebhookDeliveryListOut(items=items, total=len(items))
+    return to_delivery_list_out(items)

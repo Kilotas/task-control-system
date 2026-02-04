@@ -31,6 +31,10 @@ class Settings(BaseSettings):
     redis_url: str = "redis://localhost:6379/0"
     cache_ttl: int = 300
 
+    rate_limit_enabled: bool = True
+    rate_limit_requests: int = 100
+    rate_limit_window: int = 60
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

@@ -34,6 +34,7 @@ class WebhookDelivery(Base):
         server_default=func.now(),
         nullable=False,
     )
+    last_attempt_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     delivered_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     subscription: Mapped["WebhookSubscription"] = relationship(back_populates="deliveries")

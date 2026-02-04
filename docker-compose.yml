@@ -135,6 +135,21 @@ services:
       timeout: 3s
       retries: 20
 
+  webhook-receiver:
+    build:
+      context: ./examples
+      dockerfile: Dockerfile
+    container_name: prod_control_webhook_receiver
+    environment:
+      WEBHOOK_SECRET: my-secret-key
+    ports:
+      - "5000:5000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5000/health')"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
 
 volumes:
   pgdata:

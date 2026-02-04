@@ -10,6 +10,7 @@ from src.api.v1.schemas.batch import BatchUpdateIn, BatchListQuery
 from src.application.uow.protocol import UnitOfWorkProtocol
 from src.core.exceptions import ConflictException, ValidationException, NotFoundException
 from src.domain.services.webhook_service import dispatch_webhook_event
+from src.domain.services.redis_service import CacheInvalidator
 
 from datetime import datetime
 
@@ -19,6 +20,7 @@ logger = logging.getLogger(__name__)
 class BatchService:
     def __init__(self, uow: UnitOfWorkProtocol):
         self.uow = uow
+        self._cache = CacheInvalidator()
 
     async def create_batches(self, items: list[dict[str, Any]]) -> list:
         logger.info("Creating batches: count=%d", len(items))
@@ -42,6 +44,8 @@ class BatchService:
                     "nomenclature": batch.nomenclature,
                     "work_center": item.get("work_center_identifier", ""),
                 })
+
+            await self._cache.on_batch_created()
 
             return created
 
@@ -95,8 +99,10 @@ class BatchService:
                     "changes": changes,
                 })
 
-            return batch
+            if changes:
+                await self._cache.on_batch_updated(batch_id)
 
+            return batch
 
     async def list_batches(self, query: BatchListQuery) -> list[dict]:
         async with self.uow as uow:
@@ -126,8 +132,10 @@ class BatchService:
 
             updated = await uow.products.aggregate_by_batch(batch_id)
 
-
             await uow.flush()
+
+            if updated > 0:
+                await self._cache.on_product_aggregated(batch_id)
 
             return {
                 "batch_id": batch_id,
@@ -135,7 +143,6 @@ class BatchService:
                 "already_aggregated": already,
                 "total_products": total,
             }
-
 
     def _validate_items(self, items: list[dict[str, Any]]) -> None:
         if not items:
@@ -156,7 +163,6 @@ class BatchService:
                     f"ДатаПартии={batch['batch_date']}"
                 )
             seen.add(key)
-
 
     async def _prepare(
         self,

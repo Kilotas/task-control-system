@@ -56,6 +56,15 @@ class WebhookRepository:
         await self.session.flush()
         return delivery
 
+    async def get_delivery_by_id(self, delivery_id: int) -> WebhookDelivery | None:
+        stmt = (
+            select(WebhookDelivery)
+            .options(selectinload(WebhookDelivery.subscription))
+            .where(WebhookDelivery.id == delivery_id)
+        )
+        result = await self.session.execute(stmt)
+        return result.scalar_one_or_none()
+
     async def update_delivery(self, delivery: WebhookDelivery) -> WebhookDelivery:
         await self.session.flush()
         return delivery
