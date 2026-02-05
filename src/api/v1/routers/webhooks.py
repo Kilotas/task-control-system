@@ -8,6 +8,7 @@ from src.api.v1.schemas.webhook import (
     WebhookDeliveryListOut,
 )
 from src.core.dependencies import WebhookServiceDep
+from src.core.circuit_breaker import webhook_circuit_breaker
 from src.domain.mappers.webhook_mapper import (
     to_subscription_out,
     to_subscription_list_out,
@@ -15,6 +16,11 @@ from src.domain.mappers.webhook_mapper import (
 )
 
 router = APIRouter(prefix="/webhooks", tags=["Webhooks"])
+
+
+@router.get("/circuit-breaker/status")
+async def get_circuit_breaker_status():
+    return webhook_circuit_breaker.get_state()
 
 
 @router.post(

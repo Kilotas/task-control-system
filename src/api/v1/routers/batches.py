@@ -1,11 +1,12 @@
 from typing import Annotated
 
-from fastapi import APIRouter, status, Depends, UploadFile, File
+from fastapi import APIRouter, status, Depends, UploadFile, File, Request
 
 from src.api.v1.schemas.batch import BatchCreateIn, BatchCreatedOut, BatchDetailOut, BatchUpdateIn, BatchListQuery, BatchAggregateOut
 from src.api.v1.schemas.export import BatchExportIn
 from src.api.v1.schemas.reports import BatchReportIn
 from src.core.dependencies import BatchServiceDep
+from src.core.rate_limiter import limiter
 from src.domain.mappers.batch_mapper import to_created_out
 
 from src.api.v1.schemas.task import AggregateAsyncIn, TaskStartedOut
@@ -16,7 +17,6 @@ from src.tasks.imports import import_batches_from_file
 from src.tasks.batch_tasks import export_batches_to_file
 
 
-
 router = APIRouter(prefix="/batches", tags=["Batches"])
 
 
@@ -25,7 +25,9 @@ router = APIRouter(prefix="/batches", tags=["Batches"])
     response_model=list[BatchCreatedOut],
     status_code=status.HTTP_201_CREATED,
 )
+@limiter.limit("30/minute")
 async def create_batches(
+    request: Request,
     payload: list[BatchCreateIn],
     service: BatchServiceDep,
 ) -> list[BatchCreatedOut]:
@@ -153,7 +155,8 @@ async def generate_batch_report_async(
     response_model=TaskStartedOut,
     status_code=status.HTTP_202_ACCEPTED,
 )
-async def import_batches(file: UploadFile = File(...)):
+@limiter.limit("5/minute")
+async def import_batches(request: Request, file: UploadFile = File(...)):
     data = await file.read()
 
     minio = get_minio_service()
@@ -162,7 +165,7 @@ async def import_batches(file: UploadFile = File(...)):
                              content_type=file.content_type or "application/octet-stream")
 
 
-    task = import_batches_from_file.delay(file_object_name=object_name, user_id=1) # аутентификацию не добавлял, пока так
+    task = import_batches_from_file.delay(file_object_name=object_name, user_id=1)
 
     return TaskStartedOut(task_id=task.id, status=task.status, message="File uploaded, import started")
 
@@ -172,7 +175,8 @@ async def import_batches(file: UploadFile = File(...)):
     response_model=TaskStartedOut,
     status_code=status.HTTP_202_ACCEPTED,
 )
-async def export_batches(payload: BatchExportIn):
+@limiter.limit("10/minute")
+async def export_batches(request: Request, payload: BatchExportIn):
     task = export_batches_to_file.delay(filters=payload.filters, format=payload.format)
     return TaskStartedOut(task_id=task.id, status=task.status, message="Export started")
 

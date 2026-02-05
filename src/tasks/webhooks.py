@@ -11,6 +11,8 @@ import httpx
 from src.celery_app import celery_app
 from src.application.uow.sqlalchemy import SqlAlchemyUnitOfWork
 from src.core.database import celery_session_maker
+from src.core.circuit_breaker import webhook_circuit_breaker
+from src.core.circuit_breaker_types import CircuitBreakerOpenException
 from src.data.models.webhook_delivery import WebhookDelivery
 from src.domain.exceptions import (
     WebhookDeliveryNotFound,
@@ -143,8 +145,16 @@ def send_webhook_delivery(self, delivery_id: int):
         delivery.last_attempt_at = datetime.now(timezone.utc)
 
         try:
-            response = await execute_http_request(subscription.url, body, headers, timeout)
+            async def _do_request():
+                return await execute_http_request(subscription.url, body, headers, timeout)
+
+            response = await webhook_circuit_breaker.call(_do_request)
             handle_response(delivery, response)
+        except CircuitBreakerOpenException as exc:
+            delivery.status = "failed"
+            delivery.error_message = str(exc)
+            logger.warning("Circuit breaker open: delivery_id=%s", delivery.id)
+            raise WebhookDeliveryFailed(delivery.id, str(exc))
         except (WebhookHttpError, WebhookTimeoutError, WebhookConnectionError, WebhookDeliveryFailed):
             raise
         except Exception as exc:
