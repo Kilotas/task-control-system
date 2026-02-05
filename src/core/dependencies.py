@@ -1,13 +1,10 @@
-from typing import Annotated
+from typing import Annotated, Any
 
 from fastapi import Depends
 
 from src.application.uow.protocol import UnitOfWorkProtocol
 from src.application.uow.sqlalchemy import SqlAlchemyUnitOfWork
 from src.core.database import async_session_maker
-from src.domain.services.batch_service import BatchService
-from src.domain.services.product_service import ProductService
-from src.domain.services.webhook_service import WebhookService
 
 
 def get_uow() -> SqlAlchemyUnitOfWork:
@@ -16,24 +13,25 @@ def get_uow() -> SqlAlchemyUnitOfWork:
 
 async def get_batch_service(
     uow: Annotated[UnitOfWorkProtocol, Depends(get_uow)],
-) -> BatchService:
+) -> Any:
+    from src.domain.services.batch_service import BatchService
     return BatchService(uow=uow)
 
 
 async def get_product_service(
     uow: Annotated[UnitOfWorkProtocol, Depends(get_uow)],
-) -> ProductService:
+) -> Any:
+    from src.domain.services.product_service import ProductService
     return ProductService(uow=uow)
 
 
 async def get_webhook_service(
     uow: Annotated[UnitOfWorkProtocol, Depends(get_uow)],
-) -> WebhookService:
+) -> Any:
+    from src.domain.services.webhook_service import WebhookService
     return WebhookService(uow=uow)
 
 
-BatchServiceDep = Annotated[BatchService, Depends(get_batch_service)]
-
-ProductServiceDep = Annotated[ProductService, Depends(get_product_service)]
-
-WebhookServiceDep = Annotated[WebhookService, Depends(get_webhook_service)]
+BatchServiceDep = Annotated[Any, Depends(get_batch_service)]
+ProductServiceDep = Annotated[Any, Depends(get_product_service)]
+WebhookServiceDep = Annotated[Any, Depends(get_webhook_service)]
