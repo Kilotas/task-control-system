@@ -1,6 +1,13 @@
-from src.api.v1.schemas.batch import BatchCreatedOut
+from __future__ import annotations
 
-def to_created_out(batch, work_center_identifier: str) -> BatchCreatedOut:
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from src.api.v1.schemas.batch import BatchCreatedOut
+
+
+def to_created_out(batch, work_center_identifier: str) -> "BatchCreatedOut":
+    from src.api.v1.schemas.batch import BatchCreatedOut
     return BatchCreatedOut(
         id=batch.id,
         is_closed=batch.is_closed,

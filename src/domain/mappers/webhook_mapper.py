@@ -1,14 +1,18 @@
 from __future__ import annotations
 
-from src.api.v1.schemas.webhook import (
-    WebhookSubscriptionOut,
-    WebhookSubscriptionListOut,
-    WebhookDeliveryOut,
-    WebhookDeliveryListOut,
-)
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from src.api.v1.schemas.webhook import (
+        WebhookSubscriptionOut,
+        WebhookSubscriptionListOut,
+        WebhookDeliveryOut,
+        WebhookDeliveryListOut,
+    )
 
 
-def to_subscription_out(subscription) -> WebhookSubscriptionOut:
+def to_subscription_out(subscription) -> "WebhookSubscriptionOut":
+    from src.api.v1.schemas.webhook import WebhookSubscriptionOut
     return WebhookSubscriptionOut(
         id=subscription.id,
         url=subscription.url,
@@ -18,12 +22,14 @@ def to_subscription_out(subscription) -> WebhookSubscriptionOut:
     )
 
 
-def to_subscription_list_out(subscriptions: list) -> WebhookSubscriptionListOut:
+def to_subscription_list_out(subscriptions: list) -> "WebhookSubscriptionListOut":
+    from src.api.v1.schemas.webhook import WebhookSubscriptionListOut
     items = [to_subscription_out(sub) for sub in subscriptions]
     return WebhookSubscriptionListOut(items=items, total=len(items))
 
 
-def to_delivery_out(delivery) -> WebhookDeliveryOut:
+def to_delivery_out(delivery) -> "WebhookDeliveryOut":
+    from src.api.v1.schemas.webhook import WebhookDeliveryOut
     return WebhookDeliveryOut(
         id=delivery.id,
         event_type=delivery.event_type,
@@ -36,6 +42,7 @@ def to_delivery_out(delivery) -> WebhookDeliveryOut:
     )
 
 
-def to_delivery_list_out(deliveries: list) -> WebhookDeliveryListOut:
+def to_delivery_list_out(deliveries: list) -> "WebhookDeliveryListOut":
+    from src.api.v1.schemas.webhook import WebhookDeliveryListOut
     items = [to_delivery_out(d) for d in deliveries]
     return WebhookDeliveryListOut(items=items, total=len(items))

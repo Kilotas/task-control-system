@@ -1,23 +1,23 @@
 from __future__ import annotations
 
-from src.api.v1.schemas.analytics import (
-    DashboardOut,
-    SummaryStats,
-    TodayStats,
-    ShiftStats,
-    TopWorkCenter,
-    BatchStatisticsOut,
-    BatchInfo,
-    ProductionStats,
-    Timeline,
-    TeamPerformance,
-    CompareBatchesOut,
-    BatchComparison,
-    CompareAverage,
-)
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from src.api.v1.schemas.analytics import (
+        DashboardOut,
+        BatchStatisticsOut,
+        CompareBatchesOut,
+    )
 
 
-def to_dashboard_out(data: dict) -> DashboardOut:
+def to_dashboard_out(data: dict) -> "DashboardOut":
+    from src.api.v1.schemas.analytics import (
+        DashboardOut,
+        SummaryStats,
+        TodayStats,
+        ShiftStats,
+        TopWorkCenter,
+    )
     return DashboardOut(
         summary=SummaryStats(**data["summary"]),
         today=TodayStats(**data["today"]),
@@ -27,7 +27,14 @@ def to_dashboard_out(data: dict) -> DashboardOut:
     )
 
 
-def to_batch_statistics_out(data: dict) -> BatchStatisticsOut:
+def to_batch_statistics_out(data: dict) -> "BatchStatisticsOut":
+    from src.api.v1.schemas.analytics import (
+        BatchStatisticsOut,
+        BatchInfo,
+        ProductionStats,
+        Timeline,
+        TeamPerformance,
+    )
     return BatchStatisticsOut(
         batch_info=BatchInfo(**data["batch_info"]),
         production_stats=ProductionStats(**data["production_stats"]),
@@ -37,7 +44,12 @@ def to_batch_statistics_out(data: dict) -> BatchStatisticsOut:
     )
 
 
-def to_compare_batches_out(data: dict) -> CompareBatchesOut:
+def to_compare_batches_out(data: dict) -> "CompareBatchesOut":
+    from src.api.v1.schemas.analytics import (
+        CompareBatchesOut,
+        BatchComparison,
+        CompareAverage,
+    )
     return CompareBatchesOut(
         comparison=[BatchComparison(**item) for item in data["comparison"]],
         average=CompareAverage(**data["average"]) if data["average"] else CompareAverage(aggregation_rate=0, products_per_hour=0),

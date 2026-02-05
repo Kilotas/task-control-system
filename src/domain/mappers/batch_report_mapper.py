@@ -1,8 +1,14 @@
-from src.data.models import Batch
-from src.domain.dto.report_dto import BatchReportDTO, ProductReportDTO
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from src.data.models import Batch
+    from src.domain.dto.report_dto import BatchReportDTO
 
 
-def _to_report_dto(batch: Batch) -> BatchReportDTO:
+def _to_report_dto(batch: "Batch") -> "BatchReportDTO":
+    from src.domain.dto.report_dto import BatchReportDTO, ProductReportDTO
     return BatchReportDTO(
         batch_number=batch.batch_number,
         batch_date=str(batch.batch_date),
